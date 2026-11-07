@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mailcheck – spam mail detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9EDF3;--surface:#fff;--ink:#12203A;--muted:#5B6880;--line:#CBD3E0;--spam:#C2321F;--spam-t:#FBE3DE;--safe:#167A55;--safe-t:#D9F1E6;--btn:#2A4BD7;--btn-ink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1626;--surface:#16213A;--ink:#E8EDF7;--muted:#9AA7C0;--line:#2A3858;--spam:#FF8A78;--spam-t:#4A1F1B;--safe:#5FD3A2;--safe-t:#123A2C;--btn:#7C97FF;--btn-ink:#0E1626}}
+:root[data-theme="dark"]{--bg:#0E1626;--surface:#16213A;--ink:#E8EDF7;--muted:#9AA7C0;--line:#2A3858;--spam:#FF8A78;--spam-t:#4A1F1B;--safe:#5FD3A2;--safe-t:#123A2C;--btn:#7C97FF;--btn-ink:#0E1626}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 56px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:28px}
+.logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted);font-size:.95rem}
+h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.04;letter-spacing:-.035em;font-weight:800;margin:0 0 10px;max-width:16ch}
+.lede{color:var(--muted);margin:0 0 28px;max-width:52ch}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:0;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.panel{min-width:0;background:transparent;border:0;border-radius:0;padding:20px}
+#out{border-left:1px solid var(--line)}
+label{font-weight:600;display:block;margin-bottom:8px}
+textarea{width:100%;min-height:230px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:14px;font:inherit;color:var(--ink);background:var(--bg)}
+textarea:focus,button:focus-visible{outline:3px solid var(--btn);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer}
+.chip:hover{background:var(--bg)}
+.go{background:var(--btn);color:var(--btn-ink);border:0;border-radius:12px;padding:12px 26px;font:inherit;font-weight:600;font-size:1rem;cursor:pointer}
+.go:disabled{opacity:.6;cursor:wait}
+.empty{color:var(--muted);padding:56px 8px;text-align:center}
+.verdict{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.stamp{border:4px solid;border-radius:10px;padding:6px 16px;font-weight:800;font-size:1.9rem;letter-spacing:-.02em;transform:rotate(-5deg);animation:land .35s cubic-bezier(.2,1.4,.4,1)}
+.stamp.spam{color:var(--spam);background:var(--spam-t)}.stamp.ham{color:var(--safe);background:var(--safe-t)}
+@keyframes land{from{transform:rotate(-12deg) scale(1.8);opacity:0}to{transform:rotate(-5deg) scale(1);opacity:1}}
+.gauge{width:180px;margin-left:auto}
+.gauge .pct{font-weight:800;font-size:1.6rem;text-anchor:middle;fill:var(--ink)}
+.gauge .sub{font-size:.7rem;text-anchor:middle;fill:var(--muted)}
+.arc{fill:none;stroke-width:14;stroke-linecap:round}
+.fill{transition:stroke-dashoffset .7s ease,stroke .3s}
+h2{font-size:1rem;margin:22px 0 8px}
+.msg{max-height:210px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-left:3px solid var(--line);padding:0 12px;color:var(--ink)}
+mark{border-radius:4px;padding:0 3px;color:inherit}
+mark.s{background:var(--spam-t);box-shadow:inset 0 -2px var(--spam)}mark.h{background:var(--safe-t);box-shadow:inset 0 -2px var(--safe)}
+.words{display:flex;flex-wrap:wrap;gap:6px}
+.w{border-radius:8px;padding:3px 10px;font-size:.88rem}.w.s{background:var(--spam-t);color:var(--spam)}.w.h{background:var(--safe-t);color:var(--safe)}
+.note{color:var(--muted);font-size:.82rem;margin-top:14px}
+.hist{margin-top:20px}.hist button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 2px;font:inherit;color:var(--ink);cursor:pointer}
+.hist .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tag{font-size:.8rem;font-weight:600;border-radius:6px;padding:1px 8px}
+.tag.spam{background:var(--spam-t);color:var(--spam)}.tag.ham{background:var(--safe-t);color:var(--safe)}
+@media(max-width:820px){.grid{grid-template-columns:1fr}.panel{padding:18px}#out{border-left:0;border-top:1px solid var(--line)}.gauge{margin-left:0}header{flex-direction:column;gap:2px}}
+@media(prefers-reduced-motion:reduce){.stamp{animation:none}.fill{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><span class="logo">Mailcheck</span><p>Spam detection with TF-IDF and logistic regression</p></header>
+  <h1>Is this email safe to open?</h1>
+  <p class="lede">Paste any email or text message. Mailcheck scores it and shows which words tipped the result.</p>
+  <div class="grid">
+    <section class="panel">
+      <label for="mail">Email text</label>
+      <textarea id="mail" placeholder="Paste the email here…"></textarea>
+      <div class="chips" aria-label="Sample emails">
+        <button class="chip" data-s="Congratulations! You’ve won a FREE prize. Claim now at www.win-cash.com or call 09061701461 before midnight!!">Prize claim</button>
+        <button class="chip" data-s="I’ve been searching for the right words to thank you for this breather. I promise I won’t take your help for granted and will fulfil my promise. You have been wonderful and a blessing at all times">Thank-you note</button>
+        <button class="chip" data-s="Hi, the meeting has moved to 3pm tomorrow. Can you bring the report? Thanks, and sorry for the short notice.">Meeting reminder</button>
+      </div>
+      <button class="go" id="go">Check mail</button>
+      <div class="hist" id="hist" hidden><h2>Recent checks</h2><div id="histList"></div></div>
+    </section>
+    <section class="panel" id="out" aria-live="polite">
+      <div class="empty">Paste an email and press Check mail to see the verdict.</div>
+    </section>
+  </div>
+</div>
+<script>
+const SPAM={free:2.2,win:2,winner:2.4,won:2.2,prize:2.4,claim:2,urgent:2,cash:1.8,click:1.4,offer:1.4,txt:1.2,call:.8,now:.9,congratulations:2,guaranteed:2,"100%":1.5,http:1.3,www:1.3,reply:1,stop:1,mobile:.9,award:1.6,bonus:1.5,loan:1.8,credit:1.4,subscribe:1.2,limited:1.3,midnight:.8};
+const HAM={thanks:1.4,thank:1.4,love:1,tomorrow:1,lunch:1.2,meeting:1.2,home:.9,sorry:.9,dinner:1.1,soon:.7,promise:1,help:1,wonderful:1.2,blessing:1.4,breather:1.2,report:.9,hi:.6,bring:.6};
+const TOKEN=/([A-Za-z0-9£$%]+)/;
+// Browser-only stand-in for the trained model, used when no Flask server answers /predict.
+function demo(text){
+  const toks=(text.toLowerCase().match(/[a-z0-9£$%]+/g)||[]);const seen={};let s=-0.5;
+  toks.forEach(t=>{const w=SPAM[t]||-HAM[t]||0;if(w&&!seen[t]){seen[t]=w;s+=w}});
+  if(/\d{7,}/.test(text))s+=1.4;if((text.match(/!/g)||[]).length>2)s+=.8;
+  const p=1/(1+Math.exp(-s));
+  const words=Object.entries(seen).map(([word,weight])=>({word,weight})).sort((a,b)=>Math.abs(b.weight)-Math.abs(a.weight)).slice(0,12);
+  return {label:p>=.5?"spam":"ham",spam_prob:p,words,demo:true};
+}
+async function score(text){
+  try{const r=await fetch("/predict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+    if(r.ok){const d=await r.json();if(d&&d.label)return d}}catch(e){}
+  return demo(text);
+}
+const $=id=>document.getElementById(id);const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const hist=[];
+function render(text,d){
+  const spam=d.label==="spam",k=spam?"spam":"ham",pct=Math.round(d.spam_prob*100),map={};
+  d.words.forEach(w=>map[w.word]=w.weight);
+  const body=text.split(TOKEN).map((p,i)=>{const w=map[p.toLowerCase()];return i%2&&w?`<mark class="${w>0?"s":"h"}" title="${w>0?"Pushes toward spam":"Pushes toward not spam"}">${esc(p)}</mark>`:esc(p)}).join("");
+  const chips=d.words.length?d.words.map(w=>`<span class="w ${w.weight>0?"s":"h"}">${esc(w.word)} ${w.weight>0?"+":"−"}${Math.abs(w.weight).toFixed(2)}</span>`).join(""):"<span class='note'>No known words found in this message.</span>";
+  const L=251.3,col=spam?"var(--spam)":"var(--safe)";
+  $("out").innerHTML=`<div class="verdict"><div class="stamp ${k}">${spam?"SPAM":"NOT SPAM"}</div>
+  <svg class="gauge" viewBox="0 0 180 110" role="img" aria-label="Spam probability ${pct} percent"><path class="arc" d="M10 95 A80 80 0 0 1 170 95" stroke="var(--line)"/>
+  <path class="arc fill" id="arc" d="M10 95 A80 80 0 0 1 170 95" stroke="${col}" stroke-dasharray="${L}" stroke-dashoffset="${L}"/>
+  <text class="pct" x="90" y="82">${pct}%</text><text class="sub" x="90" y="100">chance of spam</text></svg></div>
+  <h2>Your message</h2><div class="msg">${body}</div>
+  <h2>Words that tipped it</h2><div class="words">${chips}</div>
+  <p class="note">${d.demo?"Showing the in-browser demo scorer. Run the Flask app for the trained model.":"Scored by the trained logistic regression model."} Red pushes toward spam, green toward not spam.</p>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{$("arc").style.strokeDashoffset=L*(1-d.spam_prob)}));
+}
+function renderHist(){
+  $("hist").hidden=!hist.length;
+  $("histList").innerHTML=hist.map((h,i)=>`<button data-i="${i}"><span class="t">${esc(h.text)}</span><span class="tag ${h.d.label}">${h.d.label==="spam"?"Spam":"Not spam"}</span></button>`).join("");
+}
+$("go").onclick=async()=>{
+  const text=$("mail").value.trim();
+  if(!text){$("out").innerHTML='<div class="empty">Nothing to check yet. Paste an email into the box first.</div>';$("mail").focus();return}
+  $("go").disabled=true;$("go").textContent="Checking…";
+  const d=await score(text);render(text,d);
+  hist.unshift({text,d});hist.length=Math.min(hist.length,5);renderHist();
+  $("go").disabled=false;$("go").textContent="Check mail";
+};
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{$("mail").value=c.dataset.s;$("go").click()});
+$("histList").onclick=e=>{const b=e.target.closest("button");if(b){const h=hist[b.dataset.i];$("mail").value=h.text;render(h.text,h.d)}};
+</script>
+</body>
+</html>
